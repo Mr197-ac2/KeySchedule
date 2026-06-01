@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AES Key Schedule Visualizer</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#080c14;--panel:#0d1526;--panel2:#111d35;--border:#1a2f52;
+  --accent:#00e5ff;--gold:#ffd700;--purple:#c084fc;--green:#39ff14;
+  --orange:#ff6b35;--red:#ff4757;--text:#c8d8f0;--dim:#3a5070;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 20%,rgba(0,229,255,0.04) 0%,transparent 50%),radial-gradient(ellipse at 80% 80%,rgba(192,132,252,0.04) 0%,transparent 50%);pointer-events:none;z-index:0;}
+.wrap{position:relative;z-index:1;max-width:1000px;margin:0 auto;padding:28px 16px 60px;}
+header{text-align:center;margin-bottom:36px;}
+header h1{font-family:'Orbitron',monospace;font-size:2.2rem;font-weight:900;letter-spacing:4px;background:linear-gradient(135deg,var(--accent) 0%,var(--purple) 50%,var(--gold) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 24px rgba(0,229,255,0.3));}
+header p{font-family:'Share Tech Mono',monospace;color:var(--dim);font-size:0.8rem;letter-spacing:3px;margin-top:6px;text-transform:uppercase;}
+.input-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:24px;margin-bottom:28px;display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.igroup label{display:block;font-family:'Share Tech Mono',monospace;font-size:0.7rem;letter-spacing:3px;color:var(--accent);text-transform:uppercase;margin-bottom:7px;}
+.igroup input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--gold);font-family:'Share Tech Mono',monospace;font-size:0.95rem;padding:10px 14px;outline:none;transition:border-color 0.2s;}
+.igroup input:focus{border-color:var(--accent);}
+.igroup .hint{font-size:0.7rem;color:var(--dim);margin-top:5px;font-family:'Share Tech Mono',monospace;}
+.btn-row{grid-column:1/-1;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+.btn{font-family:'Orbitron',monospace;font-size:0.75rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;border:none;border-radius:6px;padding:11px 26px;cursor:pointer;transition:all 0.2s;}
+.btn-primary{background:var(--accent);color:#000;}
+.btn-primary:hover{background:#33eeff;transform:translateY(-2px);box-shadow:0 4px 20px rgba(0,229,255,0.3);}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--dim);}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
+.err{grid-column:1/-1;color:var(--red);font-family:'Share Tech Mono',monospace;font-size:0.8rem;text-align:center;}
+.tabs{display:flex;gap:6px;margin-bottom:20px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:6px;}
+.tab{flex:1;font-family:'Orbitron',monospace;font-size:0.65rem;letter-spacing:1px;text-align:center;padding:9px 6px;border-radius:6px;cursor:pointer;color:var(--dim);transition:all 0.2s;text-transform:uppercase;}
+.tab.active{background:var(--accent);color:#000;font-weight:700;}
+.tab:not(.active):hover{color:var(--accent);background:rgba(0,229,255,0.05);}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:28px;margin-bottom:20px;}
+.card-title{font-family:'Orbitron',monospace;font-size:1rem;letter-spacing:2px;margin-bottom:18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.badge{font-size:0.6rem;padding:3px 10px;border-radius:4px;letter-spacing:2px;}
+.matrix-grid{display:grid;grid-template-columns:repeat(4,52px);gap:3px;}
+.cell{width:52px;height:44px;display:flex;align-items:center;justify-content:center;font-family:'Share Tech Mono',monospace;font-size:0.95rem;font-weight:bold;border-radius:5px;border:1px solid rgba(255,255,255,0.06);text-transform:uppercase;transition:all 0.3s;}
+.cell.pop{animation:cpop 0.4s ease;}
+@keyframes cpop{0%{transform:scale(0.7);opacity:0.2}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+.c-key{background:#0d1a30;color:var(--gold);}
+.c-rot{background:#1a0d30;color:var(--purple);border-color:rgba(192,132,252,0.3);}
+.c-sub{background:#0d2a1a;color:var(--green);border-color:rgba(57,255,20,0.2);}
+.c-rcon{background:#2a1a0d;color:var(--orange);border-color:rgba(255,107,53,0.2);}
+.c-xor{background:#1a2a0d;color:#88ff44;}
+.c-rk{background:#1a0d0d;color:var(--red);border-color:rgba(255,71,87,0.2);}
+.c-result{background:#0a1f2a;color:var(--accent);border-color:rgba(0,229,255,0.2);}
+.c-dim{background:#0a0f1a;color:var(--dim);}
+.c-highlight{background:#1f2a0a;color:var(--green);border-color:rgba(57,255,20,0.5);box-shadow:0 0 8px rgba(57,255,20,0.2);}
+.flow{display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center;}
+.flow-op{font-size:1.6rem;color:var(--dim);font-family:'Share Tech Mono',monospace;}
+.flow-label{font-family:'Share Tech Mono',monospace;font-size:0.65rem;letter-spacing:2px;text-align:center;margin-bottom:6px;text-transform:uppercase;}
+.mat-wrap{text-align:center;}
+.step-nav{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:20px;flex-wrap:wrap;}
+.snav-btn{font-family:'Orbitron',monospace;font-size:0.65rem;letter-spacing:2px;padding:10px 22px;border-radius:6px;cursor:pointer;background:var(--panel2);border:1px solid var(--accent);color:var(--accent);transition:all 0.2s;text-transform:uppercase;}
+.snav-btn:hover{background:rgba(0,229,255,0.1);}
+.snav-btn:disabled{opacity:0.3;cursor:not-allowed;}
+.step-info{font-family:'Share Tech Mono',monospace;font-size:0.8rem;color:var(--dim);text-align:center;}
+.explain{background:rgba(0,229,255,0.04);border:1px solid rgba(0,229,255,0.15);border-radius:8px;padding:16px 20px;margin-top:20px;font-family:'Share Tech Mono',monospace;font-size:0.82rem;line-height:1.8;color:var(--text);}
+.explain strong{color:var(--accent);}
+.hl-gold{color:var(--gold);}
+.hl-purple{color:var(--purple);}
+.hl-green{color:var(--green);}
+.hl-orange{color:var(--orange);}
+.rk-grid{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+.rk-item{text-align:center;}
+.rk-item .rk-label{font-family:'Share Tech Mono',monospace;font-size:0.62rem;color:var(--dim);margin-bottom:5px;letter-spacing:1px;}
+.rk-mini{display:grid;grid-template-columns:repeat(4,36px);gap:2px;}
+.rk-mini-cell{width:36px;height:28px;display:flex;align-items:center;justify-content:center;font-family:'Share Tech Mono',monospace;font-size:0.68rem;font-weight:bold;border-radius:4px;text-transform:uppercase;border:1px solid rgba(255,255,255,0.05);}
+.progress{display:flex;gap:4px;justify-content:center;margin-bottom:20px;flex-wrap:wrap;align-items:center;}
+.pdot{width:24px;height:24px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:0.55rem;font-family:'Share Tech Mono',monospace;cursor:pointer;color:var(--dim);transition:all 0.2s;flex-shrink:0;}
+.pdot.active{border-color:var(--accent);color:var(--accent);box-shadow:0 0 8px rgba(0,229,255,0.4);}
+.pdot.done{border-color:var(--green);color:var(--green);background:rgba(57,255,20,0.05);}
+.pline{width:8px;height:1px;background:var(--border);}
+.welcome{text-align:center;padding:40px 20px;color:var(--dim);font-family:'Share Tech Mono',monospace;}
+.welcome .icon{font-size:3rem;margin-bottom:16px;}
+.welcome p{font-size:0.85rem;line-height:1.8;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+@media(max-width:600px){header h1{font-size:1.4rem;}.input-card{grid-template-columns:1fr;}.cell{width:40px;height:34px;font-size:0.8rem;}.matrix-grid{grid-template-columns:repeat(4,40px);}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>AES Key Schedule</h1>
+    <p>Visualisasi Lengkap Pembangkitan Round Key</p>
+  </header>
+  <div class="input-card">
+    <div class="igroup">
+      <label>Cipher Key (16 karakter)</label>
+      <input type="text" id="inp-key" maxlength="16" value="aeRSN mydFAARinh">
+      <div class="hint">Tepat 16 karakter (128-bit)</div>
+    </div>
+    <div class="igroup">
+      <label>Key dari PDF Tugas (klik untuk pakai)</label>
+      <input type="text" id="inp-key2" maxlength="16" value="" readonly style="opacity:0.6;cursor:pointer;" onclick="useKey2()">
+      <div class="hint">Klik kolom ini untuk gunakan key tugas</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="startKS()">▶ Generate Key Schedule</button>
+      <button class="btn btn-ghost" onclick="useDefault()">Reset ke Default</button>
+    </div>
+    <div id="err" class="err" style="display:none"></div>
+  </div>
+  <div id="main" style="display:none">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab(0)">Step-by-Step</div>
+      <div class="tab" onclick="switchTab(1)">Semua Round Key</div>
+      <div class="tab" onclick="switchTab(2)">Alur Lengkap</div>
+    </div>
+    <div id="tab0">
+      <div class="progress" id="progress"></div>
+      <div class="card" id="ks-stage"></div>
+      <div class="step-nav">
+        <button class="snav-btn" id="btn-prev" onclick="navigate(-1)">◀ Sebelumnya</button>
+        <span class="step-info" id="step-info"></span>
+        <button class="snav-btn" id="btn-next" onclick="navigate(1)">Selanjutnya ▶</button>
+      </div>
+    </div>
+    <div id="tab1" style="display:none">
+      <div class="card">
+        <div class="card-title">Semua Round Keys (RK0 — RK10)</div>
+        <div class="rk-grid" id="all-rk"></div>
+      </div>
+    </div>
+    <div id="tab2" style="display:none">
+      <div class="card">
+        <div class="card-title">Alur Lengkap Key Schedule</div>
+        <div id="alur-content"></div>
+      </div>
+    </div>
+  </div>
+  <div id="welcome">
+    <div class="welcome">
+      <div class="icon">🗝️</div>
+      <p>Masukkan <strong style="color:var(--accent)">cipher key</strong> di atas<br>
+      lalu klik <strong style="color:var(--green)">Generate Key Schedule</strong><br>
+      untuk melihat cara AES membuat 11 round keys dari 1 kunci.</p>
+    </div>
+  </div>
+</div>
+<script>
+const SBOX=[0x63,0x7c,0x77,0x7b,0xf2,0x6b,0x6f,0xc5,0x30,0x01,0x67,0x2b,0xfe,0xd7,0xab,0x76,0xca,0x82,0xc9,0x7d,0xfa,0x59,0x47,0xf0,0xad,0xd4,0xa2,0xaf,0x9c,0xa4,0x72,0xc0,0xb7,0xfd,0x93,0x26,0x36,0x3f,0xf7,0xcc,0x34,0xa5,0xe5,0xf1,0x71,0xd8,0x31,0x15,0x04,0xc7,0x23,0xc3,0x18,0x96,0x05,0x9a,0x07,0x12,0x80,0xe2,0xeb,0x27,0xb2,0x75,0x09,0x83,0x2c,0x1a,0x1b,0x6e,0x5a,0xa0,0x52,0x3b,0xd6,0xb3,0x29,0xe3,0x2f,0x84,0x53,0xd1,0x00,0xed,0x20,0xfc,0xb1,0x5b,0x6a,0xcb,0xbe,0x39,0x4a,0x4c,0x58,0xcf,0xd0,0xef,0xaa,0xfb,0x43,0x4d,0x33,0x85,0x45,0xf9,0x02,0x7f,0x50,0x3c,0x9f,0xa8,0x51,0xa3,0x40,0x8f,0x92,0x9d,0x38,0xf5,0xbc,0xb6,0xda,0x21,0x10,0xff,0xf3,0xd2,0xcd,0x0c,0x13,0xec,0x5f,0x97,0x44,0x17,0xc4,0xa7,0x7e,0x3d,0x64,0x5d,0x19,0x73,0x60,0x81,0x4f,0xdc,0x22,0x2a,0x90,0x88,0x46,0xee,0xb8,0x14,0xde,0x5e,0x0b,0xdb,0xe0,0x32,0x3a,0x0a,0x49,0x06,0x24,0x5c,0xc2,0xd3,0xac,0x62,0x91,0x95,0xe4,0x79,0xe7,0xc8,0x37,0x6d,0x8d,0xd5,0x4e,0xa9,0x6c,0x56,0xf4,0xea,0x65,0x7a,0xae,0x08,0xba,0x78,0x25,0x2e,0x1c,0xa6,0xb4,0xc6,0xe8,0xdd,0x74,0x1f,0x4b,0xbd,0x8b,0x8a,0x70,0x3e,0xb5,0x66,0x48,0x03,0xf6,0x0e,0x61,0x35,0x57,0xb9,0x86,0xc1,0x1d,0x9e,0xe1,0xf8,0x98,0x11,0x69,0xd9,0x8e,0x94,0x9b,0x1e,0x87,0xe9,0xce,0x55,0x28,0xdf,0x8c,0xa1,0x89,0x0d,0xbf,0xe6,0x42,0x68,0x41,0x99,0x2d,0x0f,0xb0,0x54,0xbb,0x16];
+const RCON=[0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x1b,0x36];
+function h(v){return v.toString(16).padStart(2,'0').toUpperCase();}
+function strToBytes(s){return Array.from(s).map(c=>c.charCodeAt(0));}
+
+let ksData=null,stepList=[],curStep=0,curTab=0;
+
+function useDefault(){document.getElementById('inp-key').value='Thats my Kung Fu';}
+function useKey2(){document.getElementById('inp-key').value=document.getElementById('inp-key2').value;}
+
+function keyExpansionDetailed(keyBytes){
+  let W=[];
+  for(let i=0;i<4;i++) W.push(keyBytes.slice(i*4,i*4+4));
+  let steps=[];
+  steps.push({type:'init'});
+  for(let i=4;i<44;i++){
+    let prev=[...W[i-1]],w4=[...W[i-4]],isM4=(i%4===0);
+    if(isM4){
+      let rotated=[prev[1],prev[2],prev[3],prev[0]];
+      let subbed=rotated.map(b=>SBOX[b]);
+      let rconVal=RCON[i/4-1];
+      let rconApplied=subbed.map((b,j)=>j===0?b^rconVal:b);
+      let result=rconApplied.map((b,j)=>b^w4[j]);
+      steps.push({type:'mult4',i,rnd:Math.floor(i/4),prev,rotated,subbed,rconIdx:i/4-1,rconVal,rconApplied,w4,result});
+      W.push(result);
+    } else {
+      let result=prev.map((b,j)=>b^w4[j]);
+      steps.push({type:'other',i,rnd:Math.floor(i/4),prev,w4,result});
+      W.push(result);
+    }
+  }
+  let roundKeys=[];
+  for(let r=0;r<=10;r++){let rk=[];for(let c=0;c<4;c++) rk.push([...W[r*4+c]]);roundKeys.push(rk);}
+  return {W,steps,roundKeys};
+}
+
+function startKS(){
+  const key=document.getElementById('inp-key').value;
+  const err=document.getElementById('err');
+  if(key.length!==16){err.textContent='⚠ Key harus tepat 16 karakter!';err.style.display='block';return;}
+  err.style.display='none';
+  ksData=keyExpansionDetailed(strToBytes(key));
+  buildStepList();buildProgress();renderStep(0);buildAllRK();buildAlur();
+  document.getElementById('main').style.display='block';
+  document.getElementById('welcome').style.display='none';
+  switchTab(0);
+}
+
+function buildStepList(){
+  stepList=[];
+  stepList.push({kind:'intro'});
+  stepList.push({kind:'origkey'});
+  for(let r=1;r<=10;r++){
+    stepList.push({kind:'round_intro',rnd:r});
+    let m4=ksData.steps.find(s=>s.type==='mult4'&&s.rnd===r);
+    if(m4) stepList.push({kind:'mult4',data:m4});
+    let others=ksData.steps.filter(s=>s.type==='other'&&s.rnd===r);
+    others.forEach(s=>stepList.push({kind:'other',data:s}));
+    stepList.push({kind:'show_rk',rnd:r});
+  }
+  stepList.push({kind:'summary'});
+}
+
+function buildProgress(){
+  const bar=document.getElementById('progress');
+  bar.innerHTML='';
+  stepList.forEach((s,i)=>{
+    if(i>0) bar.innerHTML+=`<div class="pline"></div>`;
+    let lbl=i===0?'i':(s.kind==='show_rk'?`K${s.rnd??''}`:i);
+    bar.innerHTML+=`<div class="pdot" id="pdot${i}" onclick="jumpTo(${i})" title="Step ${i+1}">${lbl}</div>`;
+  });
+}
+
+function jumpTo(i){curStep=i;renderStep(i);}
+function navigate(d){curStep=Math.max(0,Math.min(stepList.length-1,curStep+d));renderStep(curStep);document.querySelector('.card').scrollIntoView({behavior:'smooth',block:'nearest'});}
+
+function renderStep(idx){
+  curStep=idx;
+  const s=stepList[idx];
+  document.getElementById('ks-stage').innerHTML=buildStepHTML(s);
+  document.querySelectorAll('.pdot').forEach((d,i)=>{
+    d.classList.remove('active','done');
+    if(i===idx) d.classList.add('active');
+    else if(i<idx) d.classList.add('done');
+  });
+  document.getElementById('step-info').textContent=`Langkah ${idx+1} dari ${stepList.length}`;
+  document.getElementById('btn-prev').disabled=idx===0;
+  document.getElementById('btn-next').disabled=idx===stepList.length-1;
+}
+
+function wordColHTML(w,cls,label='',anim=false){
+  return `<div class="mat-wrap">
+    ${label?`<div class="flow-label" style="color:var(--dim)">${label}</div>`:''}
+    <div style="display:grid;grid-template-columns:52px;gap:3px">
+      ${w.map(b=>`<div class="cell ${cls}${anim?' pop':''}">${h(b)}</div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function matHTML(words,cls,label='',anim=false){
+  let html=`<div class="mat-wrap">`;
+  if(label) html+=`<div class="flow-label" style="color:var(--dim);margin-bottom:8px">${label}</div>`;
+  html+=`<div class="matrix-grid">`;
+  for(let row=0;row<4;row++) for(let col=0;col<4;col++)
+    html+=`<div class="cell ${cls}${anim?' pop':''}">${h(words[col][row])}</div>`;
+  html+=`</div></div>`;
+  return html;
+}
+
+function buildStepHTML(s){
+  switch(s.kind){
+    case 'intro': return renderIntro();
+    case 'origkey': return renderOrigKey();
+    case 'round_intro': return renderRoundIntro(s.rnd);
+    case 'mult4': return renderMult4(s.data);
+    case 'other': return renderOther(s.data);
+    case 'show_rk': return renderShowRK(s.rnd);
+    case 'summary': return renderSummary();
+  }
+}
+
+function renderIntro(){return `
+  <div class="card-title"><span class="badge" style="background:rgba(0,229,255,0.15);color:var(--accent);border:1px solid rgba(0,229,255,0.3)">INTRO</span>Apa itu Key Schedule?</div>
+  <div class="explain">
+    <strong>Key Schedule</strong> adalah proses AES untuk menghasilkan <strong>11 Round Keys</strong> dari 1 Cipher Key (128-bit).<br><br>
+    Round Keys ini digunakan di setiap ronde enkripsi pada langkah <strong>AddRoundKey</strong>.<br><br>
+    <span class="hl-gold">▸ Round Key 0</span> = Cipher Key asli (langsung dipakai tanpa diubah)<br>
+    <span class="hl-gold">▸ Round Key 1–10</span> = Diturunkan bertahap dari key sebelumnya<br><br>
+    Cipher Key 128-bit dibagi menjadi <strong>4 Word</strong> (W0, W1, W2, W3), masing-masing 32-bit (4 byte).<br><br>
+    Key Schedule menghasilkan total <strong>44 Word</strong> (W0–W43), dikelompokkan menjadi 11 Round Keys.<br><br>
+    <strong>2 jenis operasi:</strong><br>
+    &nbsp;&nbsp;<span class="hl-purple">① Posisi kelipatan 4</span> (W4, W8, W12...) → proses khusus: RotWord + SubBytes + XOR Rcon + XOR W[i-4]<br>
+    &nbsp;&nbsp;<span class="hl-green">② Posisi lainnya</span> (W5,W6,W7...) → cukup XOR W[i-1] dengan W[i-4]
+  </div>
+  <div style="margin-top:20px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:0.8rem;color:var(--dim)">Tekan <strong style="color:var(--accent)">Selanjutnya ▶</strong> untuk mulai</div>`;}
+
+function renderOrigKey(){
+  const W=ksData.W;
+  return `
+  <div class="card-title"><span class="badge" style="background:rgba(255,215,0,0.15);color:var(--gold);border:1px solid rgba(255,215,0,0.3)">ROUND KEY 0</span>Cipher Key = Round Key 0</div>
+  <div class="explain">Cipher Key langsung dipakai sebagai <span class="hl-gold">Round Key 0</span> tanpa perubahan apapun.<br>Dibagi menjadi 4 Word: <strong>W0, W1, W2, W3</strong></div>
+  <div class="flow" style="margin-top:20px">
+    ${[0,1,2,3].map(i=>wordColHTML(W[i],'c-key',`W${i}`)).join('<div style="width:1px;height:44px;background:var(--border);margin:20px 4px 0"></div>')}
+  </div>
+  <div style="margin-top:20px;text-align:center">${matHTML([W[0],W[1],W[2],W[3]],'c-key','Round Key 0')}</div>
+  <div class="explain" style="margin-top:12px">
+    <strong>Contoh:</strong> W0 = [${W[0].map(h).join(', ')}], W1 = [${W[1].map(h).join(', ')}], dst.<br>
+    4 word ini langsung dipakai untuk <strong>AddRoundKey awal</strong> (sebelum Round 1).
+  </div>`;}
+
+function renderRoundIntro(rnd){
+  const i=rnd*4;const W=ksData.W;const prevW=W[i-1];
+  return `
+  <div class="card-title"><span class="badge" style="background:rgba(192,132,252,0.15);color:var(--purple);border:1px solid rgba(192,132,252,0.3)">ROUND ${rnd}</span>Membuat Round Key ${rnd}</div>
+  <div class="explain">
+    Untuk <span class="hl-gold">Round Key ${rnd}</span>, perlu dihasilkan: <strong>W${i}, W${i+1}, W${i+2}, W${i+3}</strong><br><br>
+    <span class="hl-purple">▸ W${i}</span> → kelipatan 4 → proses KHUSUS: RotWord → SubBytes → XOR Rcon → XOR W${i-4}<br>
+    <span class="hl-green">▸ W${i+1}, W${i+2}, W${i+3}</span> → proses BIASA: XOR saja<br><br>
+    Input dari round sebelumnya: <strong>W${i-1}</strong> = [${prevW.map(h).join(', ')}]
+  </div>
+  <div class="flow" style="margin-top:16px">
+    ${wordColHTML(prevW,'c-key',`W${i-1} (input untuk W${i})`)}
+  </div>`;}
+
+function renderMult4(d){
+  const rconRow=[d.rconVal,0,0,0];
+  return `
+  <div class="card-title"><span class="badge" style="background:rgba(192,132,252,0.15);color:var(--purple);border:1px solid rgba(192,132,252,0.3)">ROUND ${d.rnd}</span>W${d.i} — Proses Kelipatan 4 (Khusus)</div>
+  <div style="margin-top:8px;margin-bottom:16px;font-family:'Share Tech Mono',monospace;font-size:0.75rem;color:var(--dim);text-align:center;letter-spacing:2px">
+    LANGKAH: ① ROTWORD → ② SUBBYTES → ③ XOR RCON → ④ XOR W${d.i-4}
+  </div>
+  <div class="flow" style="margin-top:10px">
+    ${wordColHTML(d.prev,'c-key',`W${d.i-1}`)}
+    <div class="mat-wrap"><div class="flow-label" style="color:var(--purple)">① RotWord</div><div style="font-size:2rem;color:var(--purple)">→</div></div>
+    ${wordColHTML(d.rotated,'c-rot','Setelah Rotasi')}
+    <div class="mat-wrap"><div class="flow-label" style="color:var(--green)">② SubBytes</div><div style="font-size:2rem;color:var(--green)">→</div></div>
+    ${wordColHTML(d.subbed,'c-sub','Setelah S-Box')}
+  </div>
+  <div class="flow" style="margin-top:20px">
+    ${wordColHTML(d.subbed,'c-sub','Hasil SubB')}
+    <div class="flow-op">⊕</div>
+    ${wordColHTML(rconRow,'c-rcon',`Rcon[${d.rconIdx+1}]`)}
+    <div class="flow-op">=</div>
+    ${wordColHTML(d.rconApplied,'c-xor','Stlh Rcon')}
+    <div class="flow-op">⊕</div>
+    ${wordColHTML(d.w4,'c-dim',`W${d.i-4}`)}
+    <div class="flow-op">=</div>
+    ${wordColHTML(d.result,'c-result',`W${d.i} ✓`,true)}
+  </div>
+  <div class="explain" style="margin-top:16px">
+    <strong>① RotWord:</strong> Geser byte kiri siklik<br>
+    &nbsp;&nbsp;[<span class="hl-gold">${h(d.prev[0])}</span>, ${h(d.prev[1])}, ${h(d.prev[2])}, ${h(d.prev[3])}] → [${h(d.rotated[0])}, ${h(d.rotated[1])}, ${h(d.rotated[2])}, <span class="hl-gold">${h(d.rotated[3])}</span>]<br><br>
+    <strong>② SubBytes (S-Box):</strong><br>
+    &nbsp;&nbsp;${d.rotated.map((b,i)=>`SBOX[<span class="hl-purple">${h(b)}</span>] = <span class="hl-green">${h(d.subbed[i])}</span>`).join(' &nbsp; ')}<br><br>
+    <strong>③ XOR Rcon[${d.rconIdx+1}] = <span class="hl-orange">${h(d.rconVal)}</span>:</strong><br>
+    &nbsp;&nbsp;Byte[0]: ${h(d.subbed[0])} ⊕ <span class="hl-orange">${h(d.rconVal)}</span> = <span class="hl-orange">${h(d.rconApplied[0])}</span> &nbsp;(byte lain tidak berubah)<br><br>
+    <strong>④ XOR W${d.i-4} = [${d.w4.map(h).join(',')}]:</strong><br>
+    &nbsp;&nbsp;${d.rconApplied.map((b,j)=>`${h(b)} ⊕ ${h(d.w4[j])} = <span style="color:var(--accent)">${h(d.result[j])}</span>`).join(' &nbsp; ')}<br><br>
+    ✓ <strong>W${d.i} = [<span class="hl-gold">${d.result.map(h).join(', ')}</span>]</strong>
+  </div>`;}
+
+function renderOther(d){
+  return `
+  <div class="card-title"><span class="badge" style="background:rgba(57,255,20,0.1);color:var(--green);border:1px solid rgba(57,255,20,0.2)">ROUND ${d.rnd}</span>W${d.i} — Proses Biasa (XOR saja)</div>
+  <div class="explain" style="margin-top:0;margin-bottom:16px">
+    Posisi <strong>${d.i}</strong> bukan kelipatan 4 → cukup <strong>XOR</strong> word sebelumnya dengan word 4 posisi lebih awal.<br>
+    <strong>Rumus: W${d.i} = W${d.i-1} ⊕ W${d.i-4}</strong>
+  </div>
+  <div class="flow" style="margin-top:16px">
+    ${wordColHTML(d.prev,'c-key',`W${d.i-1}`)}
+    <div class="flow-op">⊕</div>
+    ${wordColHTML(d.w4,'c-dim',`W${d.i-4}`)}
+    <div class="flow-op">=</div>
+    ${wordColHTML(d.result,'c-result',`W${d.i} ✓`,true)}
+  </div>
+  <div class="explain" style="margin-top:16px">
+    <strong>Perhitungan:</strong><br>
+    ${d.prev.map((b,j)=>`${h(b)} ⊕ ${h(d.w4[j])} = <span style="color:var(--accent)">${h(d.result[j])}</span>`).join(' &nbsp;|&nbsp; ')}<br><br>
+    ✓ <strong>W${d.i} = [<span class="hl-green">${d.result.map(h).join(', ')}</span>]</strong>
+  </div>`;}
+
+function renderShowRK(rnd){
+  const rk=ksData.roundKeys[rnd];const i=rnd*4;
+  return `
+  <div class="card-title"><span class="badge" style="background:rgba(255,215,0,0.15);color:var(--gold);border:1px solid rgba(255,215,0,0.3)">ROUND KEY ${rnd}</span>Round Key ${rnd} Selesai! ✓</div>
+  <div class="explain" style="margin-bottom:16px">W${i}, W${i+1}, W${i+2}, W${i+3} digabung → <span class="hl-gold">Round Key ${rnd}</span></div>
+  <div class="flow" style="margin-top:16px">
+    ${[0,1,2,3].map(c=>wordColHTML(rk[c],'c-result',`W${i+c}`)).join('<div class="flow-op" style="font-size:1rem;margin-top:28px">+</div>')}
+  </div>
+  <div style="margin-top:20px;text-align:center">${matHTML(rk,'c-highlight',`Round Key ${rnd}`,true)}</div>
+  <div class="explain" style="margin-top:12px">
+    Round Key ${rnd} ini akan digunakan pada <strong>AddRoundKey Round ${rnd}</strong> saat enkripsi.<br><br>
+    ${rnd<10?`Selanjutnya: buat Round Key ${rnd+1} dari W${i+4}...W${i+7}`:'Ini adalah Round Key terakhir (Round 10 = ronde terakhir enkripsi).'}
+  </div>`;}
+
+function renderSummary(){
+  return `
+  <div class="card-title"><span class="badge" style="background:rgba(57,255,20,0.15);color:var(--green);border:1px solid rgba(57,255,20,0.3)">SELESAI</span>Key Schedule Lengkap!</div>
+  <div class="explain">
+    Dari <strong>1 Cipher Key (128-bit)</strong>, Key Schedule berhasil menghasilkan <span class="hl-gold">11 Round Keys</span>.<br><br>
+    <span class="hl-gold">▸ 44 Word</span> total dihasilkan (W0–W43)<br>
+    <span class="hl-gold">▸ 4 Word per Round Key</span><br>
+    <span class="hl-gold">▸ 11 Round Keys</span> (RK0–RK10)<br><br>
+    <strong>Ringkasan proses:</strong><br>
+    • W0–W3 = Cipher Key langsung (Round Key 0)<br>
+    • W[i] <span class="hl-purple">kelipatan 4</span>: RotWord → SubBytes → ⊕ Rcon → ⊕ W[i-4]<br>
+    • W[i] <span class="hl-green">lainnya</span>: W[i-1] ⊕ W[i-4]<br><br>
+    Lihat tab <strong style="color:var(--accent)">"Semua Round Key"</strong> untuk melihat semua hasil.<br>
+    Lihat tab <strong style="color:var(--accent)">"Alur Lengkap"</strong> untuk ringkasan formula tiap round.
+  </div>`;}
+
+function buildAllRK(){
+  const div=document.getElementById('all-rk');div.innerHTML='';
+  ksData.roundKeys.forEach((rk,r)=>{
+    let html=`<div class="rk-item"><div class="rk-label">RK ${r}</div><div class="rk-mini">`;
+    for(let row=0;row<4;row++) for(let col=0;col<4;col++)
+      html+=`<div class="rk-mini-cell ${r===0?'c-key':'c-result'}">${h(rk[col][row])}</div>`;
+    html+=`</div></div>`;
+    div.innerHTML+=html;
+  });
+}
+
+function buildAlur(){
+  const div=document.getElementById('alur-content');
+  const W=ksData.W;
+  div.innerHTML=`
+  <div style="font-family:'Share Tech Mono',monospace;font-size:0.8rem;line-height:1.9;color:var(--text)">
+    <div style="padding:12px;background:var(--panel2);border-radius:8px;border:1px solid rgba(255,215,0,0.2);margin-bottom:10px">
+      <span style="color:var(--gold);font-weight:bold">ROUND KEY 0</span> = Cipher Key langsung<br>
+      W0=[${W[0].map(h).join(',')}] W1=[${W[1].map(h).join(',')}] W2=[${W[2].map(h).join(',')}] W3=[${W[3].map(h).join(',')}]
+    </div>
+    ${[1,2,3,4,5,6,7,8,9,10].map(r=>{
+      const i=r*4;
+      const m4=ksData.steps.find(s=>s.type==='mult4'&&s.rnd===r);
+      const others=ksData.steps.filter(s=>s.type==='other'&&s.rnd===r);
+      const rk=ksData.roundKeys[r];
+      return `<div style="padding:12px;background:var(--panel2);border-radius:8px;border:1px solid var(--border);margin-bottom:8px">
+        <div style="color:var(--accent);font-weight:bold;margin-bottom:6px">ROUND KEY ${r} (W${i}–W${i+3})</div>
+        <div style="color:var(--purple)">W${i}: RotWord(W${i-1}) → SubB → ⊕Rcon[${r}](${h(RCON[r-1])}) → ⊕W${i-4} = [${m4?m4.result.map(h).join(','):'...'}]</div>
+        ${others.map(o=>`<div style="color:var(--green)">W${o.i}: W${o.i-1} ⊕ W${o.i-4} = [${o.result.map(h).join(',')}]</div>`).join('')}
+        <div style="color:var(--gold);margin-top:4px">→ RK${r}: ${[0,1,2,3].map(c=>rk[c].map(h).join('')).join(' ')}</div>
+      </div>`;
+    }).join('')}
+  </div>`;}
+
+const RCON_REF=RCON;
+
+function switchTab(t){
+  curTab=t;
+  ['tab0','tab1','tab2'].forEach((id,i)=>{document.getElementById(id).style.display=i===t?'block':'none';});
+  document.querySelectorAll('.tab').forEach((el,i)=>{el.classList.toggle('active',i===t);});
+}
+</script>
+</body>
+</html>
